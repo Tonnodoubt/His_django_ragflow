@@ -42,25 +42,30 @@ class HistoryQuestionService:
         if start != -1 and end != -1: return text[start : end + 1]
         return text
 
-    def generate_question(self, topic: str, difficulty: str = "普通"):
+    # 👇 修改了这里：增加 custom_prompt 参数
+    def generate_question(self, topic: str, difficulty: str = "普通", custom_prompt: str = None):
         print(f"🤖 [Service] 收到请求: 生成关于 '{topic}' 的 {difficulty} 题")
         
-        prompt = f"""
-        请生成一道关于【{topic}】的【{difficulty}】难度历史选择题。
-        要求：
-        1. 必须基于知识库中的史料。
-        2. 严格输出为标准 JSON 格式。
-        3. JSON 结构需包含: question_text, options(数组), correct_answer, explanation。
-        """
+        # 如果传入了自定义 Prompt，就用传入的；否则用默认的
+        if custom_prompt:
+            final_prompt = custom_prompt
+        else:
+            final_prompt = f"""
+            请生成一道关于【{topic}】的【{difficulty}】难度历史选择题。
+            要求：必须基于知识库，返回标准 JSON，包含 question_text, options, correct_answer, explanation。
+            """
 
         try:
             response = self.client.chat.completions.create(
                 model="default",
-                messages=[{"role": "user", "content": prompt}],
+                messages=[{"role": "user", "content": final_prompt}],
                 stream=False
             )
             
             raw_content = response.choices[0].message.content
+            # 打印一下原始返回，方便调试
+            print(f"📝 RAGFlow 返回原始内容: {raw_content[:100]}...")
+            
             cleaned_json = self._clean_json_string(raw_content)
             return json.loads(cleaned_json)
 
